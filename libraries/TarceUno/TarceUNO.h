@@ -1,3 +1,5 @@
+//v 1.05 A.B.
+
 #ifndef tarceUNO_h
 #define tarceUNO_h
 
@@ -60,13 +62,28 @@
 #define NAST_EDIT_FINISH  25 
 
 
+//spomin
+#define MAX_SPOMIN			20 //velikost arr v katerega se prepišejo podatki 
+#define ST_SPOMINA 		 	7		//dejansko st spremenljivk
+
+#define MEM_MOTOR_1_MIN        1
+#define MEM_MOTOR_1_MAX        2
+#define MEM_MOTOR_2_MIN        3
+#define MEM_MOTOR_2_MAX        4
+#define MEM_MOTOR_3_MIN        5
+#define MEM_MOTOR_3_MAX        6
+#define MEM_SENSOR    	   	   7
+
+
+
 #define FUN_TIPKE 200
 
-#define MAX_PARAMETROV 2
+#define MAX_PARAMETROV 2 // kolk parametrov je lahko v posameznem oknu ekranNastavitve
 
-#define d_retState   (((s_ekranNastavitveEdit*)vsiEkrani[NAST_EDIT])->returnState)
-#define d_tretIzbran (((s_ekranNastavitve*)vsiEkrani[d_retState])->trenutnoIzbran)
-#define d_parameter  (((s_ekranNastavitve*)vsiEkrani[d_retState])->parameter[d_tretIzbran])
+#define d_retState   	 (((s_ekranNastavitveEdit*)vsiEkrani[NAST_EDIT])->returnState)		//int v katermu je shranjen ret state
+#define d_tretIzbran	 (((s_ekranNastavitve*)vsiEkrani[d_retState])->trenutnoIzbran)		//ekran[ret_state] trenutno izbrani element
+#define d_indexParametra (((s_ekranNastavitve*)vsiEkrani[d_retState])->indexi[d_tretIzbran])//od trenutno izbranega elementa dobi index parametra
+#define d_parameter  	 (parametri[d_indexParametra])										//parameter
 
 
 
@@ -93,7 +110,7 @@ typedef struct
 char* opis;
 uint16_t min;
 uint16_t max;
-int16_t vrednost;
+int16_t vrednost; // def vrednost-> uporablja samo takrat ce je v spominu shranjena napacna vrednost in takrat ko se ureja na ekranu eddit
 uint8_t  korak;
 }s_parameter;
 
@@ -105,7 +122,7 @@ uint8_t tipke[5];
 uint8_t stParametrov;
 uint8_t trenutnoIzbran;
 uint8_t focus;
-s_parameter parameter[MAX_PARAMETROV];
+uint8_t indexi[MAX_PARAMETROV]; //indexi parametrov ki so shranjeni v areju "spomin"
 }s_ekranNastavitve;
 
 typedef struct 
