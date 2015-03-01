@@ -4,6 +4,8 @@
 #include <TarceUNO.h>
 #include <EEPROM.h>   //branje in pisanje v spomin
 
+#define OMOGOCI_SPOMIN 0
+
 //osnovne spremenljivke
 LCD4Bit_mod lcd = LCD4Bit_mod(2);
 int gumbi[5];
@@ -22,7 +24,7 @@ s_ekran mainMenu = //MENI_GLAVNI
   //tipke: 
   //gor dol levo, desno, select
   0,FUN_TIPKE,DEC_IZBRAN,INC_IZBRAN, 0,
-  4,0,
+  3,0,
   "igraj !",      MENI_IGRAJ,
   "nastavitve",   MENI_NASTAVITVE,
   "info",         MENI_INFO,
@@ -243,6 +245,8 @@ void setup()
   state = MENI_GLAVNI;
   
   initEkrani();
+  
+  
 } 
 
 void initEkrani(){
@@ -546,7 +550,19 @@ void programFSM3(){
 
 }
 
+void spominPisi(int index, int vrednost){
+  if(OMOGOCI_SPOMIN){
+    EEPROM.write(index, vrednost);
+  }
+}
 
+int spominBeri(int index){
+  if(OMOGOCI_SPOMIN){
+    return EEPROM.read(index);
+  }else{
+    return -1;
+  }
+}
 void getSpomin() {
     
   vSpominu[MEM_MOTOR_1_MIN] 	= INDEX_MOTOR_1_MIN;   
@@ -584,18 +600,18 @@ void getSpomin() {
   parametri[MEM_PROG3_CAS]=	{"cas:",	10,	300,	30,	10	};
       
       
-  int vrednost = EEPROM.read(MEM_PRVIC);
+  int vrednost = spominBeri(MEM_PRVIC);
   Serial.println(vrednost);
   //pogleda ali je arduino ze biu prizgan
   if(vrednost != VARNOSTNA_ST){
     Serial.println("Prvic prizgan, pisem def vrednosti");
-    EEPROM.write(MEM_PRVIC,212);
+    spominPisi(MEM_PRVIC,212);
     //nafila ceu spomin iz EEPROM-a
     for (i = 0; i < ST_SPOMINA; i++) {
       Serial.print(i);
       Serial.print(": ");
       spomin[i] = parametri[i].vrednost;
-      EEPROM.write(vSpominu[i], parametri[i].vrednost / parametri[i].korak);
+      spominPisi(vSpominu[i], parametri[i].vrednost / parametri[i].korak);
       Serial.print("  ");
       Serial.print("nova:");
       spomin[i];
@@ -605,12 +621,12 @@ void getSpomin() {
     return;
   }
   sPrint("vrednosti so ze shranjene "VARNOSTNA_ST_STR" == ", vrednost);
-  //vrednost = EEPROM.read(MEM_PRVIC);
+  //vrednost = spominBeri(MEM_PRVIC);
   //Serial.println(vrednost);
   
   //nafila ceu spomin iz EEPROM-a
   for (i = 0; i < ST_SPOMINA; i++) {
-    spomin[i] = EEPROM.read(vSpominu[i]) * parametri[i].korak;
+    spomin[i] = spominBeri(vSpominu[i]) * parametri[i].korak;
     
      Serial.print(i);
      Serial.print(": ");
@@ -622,7 +638,7 @@ void getSpomin() {
       
       //na zacetku ko se ni nc spremenjen je v .vrednosti notr osnovna def vrednost
       spomin[i] = parametri[i].vrednost;
-      EEPROM.write(vSpominu[i], parametri[i].vrednost / parametri[i].korak);
+      spominPisi(vSpominu[i], parametri[i].vrednost / parametri[i].korak);
       Serial.print("  ");
       Serial.print("nova:");
     }
@@ -801,7 +817,7 @@ uint8_t izvediUkaz(uint8_t ukaz){
         //zapise vrednost nazaj v spomin
         spomin[d_indexParametra] = d_parameter.vrednost;
         
-        EEPROM.write(vSpominu[d_indexParametra], d_parameter.vrednost / d_parameter.korak);
+        spominPisi(vSpominu[d_indexParametra], d_parameter.vrednost / d_parameter.korak);
         sPrint("zapis v spomin:", d_parameter.vrednost / d_parameter.korak);
         
       }else{
