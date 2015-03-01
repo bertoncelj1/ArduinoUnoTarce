@@ -1,4 +1,4 @@
-//v 1.06 A.B.
+//v 1.07 A.B.
 
 
 #include <Timer.h>
@@ -61,7 +61,7 @@ s_ekran mainMenu = //MENI_GLAVNI
 
 s_ekran infoMenu = //MENI_INFO
 {
-  "Verzija 1.06",
+  "Verzija 1.07",
   //gor dol levo, desno, select
   MENI_GLAVNI, STEJ_PRITISKE, STEJ_PRITISKE, STEJ_PRITISKE, 0,
   1, 0,
@@ -153,14 +153,14 @@ s_ekran igrajMenu = //MENI_IGRAJ
   //gor dol levo, desno, select
   MENI_GLAVNI,FUN_TIPKE,DEC_IZBRAN,INC_IZBRAN, 0,
   3,0,
-  "program 1",        MENI_PROG1,
-  "program 2",        MENI_PROG2,
-  "program 3",        MENI_PROG3
+  "vse prizgane",        MENI_PROG1,
+  "nakljucno",        MENI_PROG2,
+  "po vrsti",        MENI_PROG3
 };
 
 s_ekran prog1Menu = //MENI_PROG1
 {
-  "Program 1:",
+  "Vse prizgane:",
   //gor dol levo, desno, select
   MENI_IGRAJ,FUN_TIPKE,DEC_IZBRAN,INC_IZBRAN, 0,
   2,0,
@@ -170,7 +170,7 @@ s_ekran prog1Menu = //MENI_PROG1
 
 s_ekranNastavitve prog1Nast =  //NAST_PROG1
 {
-  "prog1 nastavitve",
+  "nastavitve",
   //gor dol levo, desno, select
   MENI_PROG1,NAST_EDIT,DEC_IZBRAN,INC_IZBRAN, 0,
   //st parametrov, trenutno izbran, focus
@@ -180,7 +180,7 @@ s_ekranNastavitve prog1Nast =  //NAST_PROG1
 
 s_ekran prog2Menu = //MENI_PROG2
 {
-  "Program 2:",
+  "Prog. nakljucno:",
   //gor dol levo, desno, select
   MENI_IGRAJ,FUN_TIPKE,DEC_IZBRAN,INC_IZBRAN, 0,
   2,0,
@@ -190,7 +190,7 @@ s_ekran prog2Menu = //MENI_PROG2
 
 s_ekranNastavitve prog2Nast =  //NAST_PROG2
 {
-  "prog2 nastavitve",
+  "nastavitve",
   //gor dol levo, desno, select
   MENI_PROG2,NAST_EDIT,DEC_IZBRAN,INC_IZBRAN, 0,
   //st parametrov, trenutno izbran, focus
@@ -201,7 +201,7 @@ s_ekranNastavitve prog2Nast =  //NAST_PROG2
 
 s_ekran prog3Menu = //MENI_PROG3
 {
-  "Program 3:",
+  "Prog. po vrsti:",
   //gor dol levo, desno, select
   MENI_IGRAJ,FUN_TIPKE,DEC_IZBRAN,INC_IZBRAN, 0,
   2,0,
@@ -211,7 +211,7 @@ s_ekran prog3Menu = //MENI_PROG3
 
 s_ekranNastavitve prog3Nast =  //NAST_PROG3
 {
-  "prog3 nastavitve",
+  "nastavitve",
   //gor dol levo, desno, select
   MENI_PROG3,NAST_EDIT,DEC_IZBRAN,INC_IZBRAN, 0,
   //st parametrov, trenutno izbran, focus
