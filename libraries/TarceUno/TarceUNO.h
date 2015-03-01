@@ -1,4 +1,4 @@
-//v 1.05 A.B.
+//v 1.06 A.B.
 
 #ifndef tarceUNO_h
 #define tarceUNO_h
@@ -31,48 +31,73 @@
 #define MORTOR2_PIN  12
 #define MORTOR3_PIN  11
 
+
+#define VEDNO_ON  2 //uporablja se da je tarca skoz przgana
 #define ON  1
 #define OFF  0
 
-#define MAX_EKRANOV	20
+#define MAX_EKRANOV	25
 //ekrani in dejanska stanja
 #define MENI_GLAVNI 	1
-#define MENI_IGRAJ 	2
-#define MENI_NASTAVITVE 3
-#define MENI_PROG1 	4
-#define MENI_PROG2 	5
-#define MENI_PROG3 	6
-#define NAST_MOTOR1     7
-#define NAST_MOTOR2     8
-#define NAST_MOTOR3 	9
-#define NAST_SENZORJI 	10
-#define PROGRAM_1	11
-#define PROGRAM_2	16
-#define NAST_PROG1 	12
-#define PROGRAM_2	13
-#define PROGRAM_3	14
-#define ODSTEVAJ	15
+#define MENI_IGRAJ 		2
+#define MENI_INFO 	    3
+#define MENI_MADE_BY	4
+#define MENI_NASTAVITVE 5
+#define MENI_PROG1 		6
+#define MENI_PROG2 		7
+#define MENI_PROG3 		8
+#define NAST_MOTOR1     9
+#define NAST_MOTOR2     10
+#define NAST_MOTOR3 	11
+#define NAST_SENZORJI 	12
+#define PROGRAM_1		13
+#define PROGRAM_2		14
+#define PROGRAM_3		15
+#define NAST_PROG1 		16
+#define NAST_PROG2 		17
+#define NAST_PROG3 		18
+#define ODSTEVAJ		19
+#define NAST_EDIT   	20// ja ta oken ... 
+//fora tega okna je d aje edin oken ki uporablja inicializacijo .. pac da prebere podatke iz spomina pa nalozi def vrednosti pa to
+//in ta inicalizacija je shranjena kr pod "ukazi", kar pomen da obstaja v switchu ukazi NAST_EDIT, kjer naredi omenjeno inicalizacijo
+//posledica tega je da se obnasa kot ekran in ukaz hkrati kar je ZELO slabo in motece. Zaeenkrat je ta problem resen tako da je dodan
+//pogoj if(ukaz < MAX_EKRANOV && ukaz != NAST_EDIT), ki gre izvajat ukaze tudi ce je st manjsa od MAX_EKRANOV.
+//uprašanje: zakaj mu ne dodelim vecje stevilke? O:ce je st > MAX_EKRANOV se ne bo pravilno shranila v arr "vsi_Ekrani"
+//ta problem se bi dal resit tako da bi inicalizacijo premaknil drugam, naprimer kar v glaven switch stavek
+//ali pa da ze nardim poljso fucking state masino !
+//to bo vse
 
 //ukazi
-#define INC_IZBRAN        20
-#define DEC_IZBRAN        21
-#define NAST_EDIT         16
-#define NAST_EDIT_DEC     23
-#define NAST_EDIT_INC     24
-#define NAST_EDIT_FINISH  25 
+#define INC_IZBRAN        30
+#define DEC_IZBRAN        31
+#define NAST_EDIT_DEC     32
+#define NAST_EDIT_INC     33
+#define NAST_EDIT_FINISH  34 
+#define STEJ_PRITISKE     35 
 
 
 //spomin
 #define MAX_SPOMIN			20 //velikost arr v katerega se prepišejo podatki 
-#define ST_SPOMINA 		 	7		//dejansko st spremenljivk
+#define ST_SPOMINA 		 	12		//dejansko st spremenljivk
 
-#define MEM_MOTOR_1_MIN        1
-#define MEM_MOTOR_1_MAX        2
-#define MEM_MOTOR_2_MIN        3
-#define MEM_MOTOR_2_MAX        4
-#define MEM_MOTOR_3_MIN        5
-#define MEM_MOTOR_3_MAX        6
-#define MEM_SENSOR    	   	   7
+
+#define MEM_PRVIC			123	//na to mesto shrani ali je biu prvic prizgan
+#define VARNOSTNA_ST 		212 //stevilka s katero preverja ali je v spominu vse OK
+#define VARNOSTNA_ST_STR 	"212"
+
+#define MEM_MOTOR_1_MIN        0
+#define MEM_MOTOR_1_MAX        1
+#define MEM_MOTOR_2_MIN        2
+#define MEM_MOTOR_2_MAX        3
+#define MEM_MOTOR_3_MIN        4
+#define MEM_MOTOR_3_MAX        5
+#define MEM_SENSOR    	   	   6
+#define MEM_PROG1_CAS  	   	   7
+#define MEM_PROG2_INTERVAL 	   8
+#define MEM_PROG2_CAS  	   	   9
+#define MEM_PROG3_INTERVAL	   10
+#define MEM_PROG3_CAS  	   	   11
+
 
 
 
@@ -142,7 +167,7 @@ uint8_t tipke[5];
 typedef struct 
 {
 uint8_t stanje;
-uint8_t cnt;
+uint16_t cnt;
 uint8_t tocke;
 Servo motor;
 }s_tarca;
@@ -152,6 +177,21 @@ struct koncniNapisi
   char *besedilo;
   uint16_t zamik;
 };
+
+typedef struct 
+{
+char* naslov;
+uint8_t tipke[5];
+}s_ekranOdstevaj;
+
+typedef struct 
+{
+uint8_t state;
+uint32_t mills;
+uint8_t stOdstevanj;
+uint8_t returnState;
+
+}s_odstevajInit;
 
 void odstevaj();//uint8_t stOdstevanj, void (*initProgram)());
 #endif

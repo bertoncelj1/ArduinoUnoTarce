@@ -1,4 +1,4 @@
-//v 1.05 A.B.
+//v 1.06 A.B.
 
 
 #include <Timer.h>
@@ -23,14 +23,14 @@ int piskac = OFF;
 int stoparica = OFF;
 int stevec = 0;
 int piskacCnt = 0;
-int gumbi[5];
+int gumbi[5] = {0,0,0,0,0};
 int adc_key_in;
 int funInt = 1;
 uint8_t state;
 uint8_t puscice = 0; // ali so narisane puščice ? 
 uint16_t vsiEkrani[MAX_EKRANOV];
 uint16_t spomin[MAX_SPOMIN];
-long zacetniCas = 0;
+
 long zacetniCas2 = 0;
 char *(besedila)[3] = {
   "Igra","Start ","Info"};
@@ -56,8 +56,25 @@ s_ekran mainMenu = //MENI_GLAVNI
   4,0,
   "igraj !",      MENI_IGRAJ,
   "nastavitve",   MENI_NASTAVITVE,
-  "info",         0,
-  "random :)",    0,
+  "info",         MENI_INFO,
+};
+
+s_ekran infoMenu = //MENI_INFO
+{
+  "Verzija 1.06",
+  //gor dol levo, desno, select
+  MENI_GLAVNI, STEJ_PRITISKE, STEJ_PRITISKE, STEJ_PRITISKE, 0,
+  1, 0,
+  "1.mar.2015",       0,
+};
+
+s_ekran madeByMenu = //MENI_MADE_BY
+{
+  "SPROGRAMIRAL",
+  //gor dol levo, desno, select
+  MENI_INFO, 0, 0, 0, 0,
+  1, 0,
+  "Anze  Bertoncelj",       0,
 };
 
 s_ekran nastavitveMenu = //MENI_NASTAVITVE
@@ -117,7 +134,7 @@ s_ekranNastavitve senzorjiNast =  //NAST_SENZORJI
   //st parametrov, trenutno izbran, focus
   2,0,OFF,
   //opis,    min   max,  def,  korak
-  MEM_SENSOR
+  MEM_SENSOR,
 
 };
 
@@ -157,23 +174,29 @@ s_ekranNastavitve prog1Nast =  //NAST_PROG1
   //gor dol levo, desno, select
   MENI_PROG1,NAST_EDIT,DEC_IZBRAN,INC_IZBRAN, 0,
   //st parametrov, trenutno izbran, focus
-  2,0,OFF,
-  //opis,    min   max,  def,  korak
-  //"tezavnost:", 1, 5, 3, 1,
-  //"cas:",  10,  200, 60,  10,
-  //"hitrost:",  100,  1000, 500,  50
-
+  1,0,OFF,
+  MEM_PROG1_CAS,
 };
-
 
 s_ekran prog2Menu = //MENI_PROG2
 {
   "Program 2:",
   //gor dol levo, desno, select
   MENI_IGRAJ,FUN_TIPKE,DEC_IZBRAN,INC_IZBRAN, 0,
-  1,0,
+  2,0,
   "zacni z igro",        PROGRAM_2,
-  "nastavitve",        	 0,
+  "nastavitve",        	 NAST_PROG2,
+};
+
+s_ekranNastavitve prog2Nast =  //NAST_PROG2
+{
+  "prog2 nastavitve",
+  //gor dol levo, desno, select
+  MENI_PROG2,NAST_EDIT,DEC_IZBRAN,INC_IZBRAN, 0,
+  //st parametrov, trenutno izbran, focus
+  2,0,OFF,
+  MEM_PROG2_CAS,
+  MEM_PROG2_INTERVAL,
 };
 
 s_ekran prog3Menu = //MENI_PROG3
@@ -183,8 +206,37 @@ s_ekran prog3Menu = //MENI_PROG3
   MENI_IGRAJ,FUN_TIPKE,DEC_IZBRAN,INC_IZBRAN, 0,
   2,0,
   "zacni z igro",        PROGRAM_3,
-  "nastavitve",        	 0,
+  "nastavitve",        	 NAST_PROG3,
 };
+
+s_ekranNastavitve prog3Nast =  //NAST_PROG3
+{
+  "prog3 nastavitve",
+  //gor dol levo, desno, select
+  MENI_PROG3,NAST_EDIT,DEC_IZBRAN,INC_IZBRAN, 0,
+  //st parametrov, trenutno izbran, focus
+  2,0,OFF,
+  MEM_PROG3_CAS,
+  MEM_PROG3_INTERVAL,
+};
+
+
+s_ekranOdstevaj odstavajOkno =        // OSDSTEVAJ
+{
+  "Igra se zacne v",
+  //gor dol levo, desno, select
+  //tuki se poj notr shran tipke ki jih lahko uporabnik
+  //uporablja med odstevanjem
+  0, 0, 0, 0, 0,
+  
+};
+
+// def vrednosti odstevalnika
+s_odstevajInit odstevalnik = {
+  //state, millis, stOdstevanj, returnState
+  0, 0, 5, 255
+};
+
 
 s_ekranProgram program1 =
 {
@@ -212,14 +264,15 @@ s_tarca tarca[3];
 
 void setup() 
 { 
+    Serial.begin(9600); 
+  Serial.println("Connection OK !");
   InitialiseIO();        // inicalizacija portov input/output
   InitialiseInterrupt(); // interupt za gumbe
   timer2Init();          // inicalizacije timerja (za piskace in stevec ...)
   lcdInit();             // lcd init
   getSpomin();           //inicializira spomin in shranjene prebere vrednosti
   state = MENI_GLAVNI;
-  Serial.begin(9600); 
-  Serial.println("Connection OK !"); 
+ 
   
   initEkrani();
   
@@ -229,6 +282,11 @@ void initEkrani(){
   vsiEkrani[MENI_GLAVNI] =       (uint16_t)(&mainMenu);
   vsiEkrani[MENI_IGRAJ] =        (uint16_t)(&igrajMenu);
   vsiEkrani[MENI_NASTAVITVE] =   (uint16_t)(&nastavitveMenu);
+  vsiEkrani[MENI_INFO]  =        (uint16_t)(&infoMenu);
+  vsiEkrani[MENI_MADE_BY] =      (uint16_t)(&madeByMenu);
+  
+  vsiEkrani[ODSTEVAJ] =          (uint16_t)(&odstavajOkno);
+  
   vsiEkrani[MENI_PROG1] =   	 (uint16_t)(&prog1Menu);
   vsiEkrani[MENI_PROG2] =   	 (uint16_t)(&prog2Menu);
   vsiEkrani[MENI_PROG3] =   	 (uint16_t)(&prog3Menu);
@@ -239,16 +297,19 @@ void initEkrani(){
   vsiEkrani[NAST_SENZORJI] =     (uint16_t)(&senzorjiNast);
   vsiEkrani[NAST_EDIT] =         (uint16_t)(&editNast);
   
-  vsiEkrani[PROGRAM_1] =   	 (uint16_t)(&program1);
-  vsiEkrani[NAST_PROG1] =   	 (uint16_t)(&prog1Nast);
-  
+  vsiEkrani[PROGRAM_1] =   	 (uint16_t)(&program1); 
   vsiEkrani[PROGRAM_2] =   	 (uint16_t)(&program2);
   vsiEkrani[PROGRAM_3] =   	 (uint16_t)(&program3);
   
+  vsiEkrani[NAST_PROG1] =   	 (uint16_t)(&prog1Nast);
+  vsiEkrani[NAST_PROG2] =   	 (uint16_t)(&prog2Nast);
+  vsiEkrani[NAST_PROG3] =   	 (uint16_t)(&prog3Nast);
+  
+  
 }
 
-int odstevajState = 0;
-uint8_t stOdstevanj = 0;
+//int odstevajState = 0;
+//uint8_t stOdstevanj = 0;
 int8_t programState = -1;
 uint8_t stateReturn = 0;
 uint8_t ponavljaj = 0;
@@ -267,18 +328,22 @@ koncniNapisi napisi2[] = {
   "   Skupaj:      ",5000,
   "                ",3000,
 };
-
+//zato da se zna vrniti nazaj na prejsni state v primeru da trenutni ne obstaja
+int prevState;
 void loop() {
 
-  
+   if(ponavljaj == 0 || state != prevState) sPrint("state: ", state);
    switch(state){
       case MENI_GLAVNI:
       case MENI_IGRAJ:
       case MENI_NASTAVITVE:
+      case MENI_INFO:
+      case MENI_MADE_BY:
       case MENI_PROG1:
       case MENI_PROG2:
       case MENI_PROG3:
         drawScreen();
+        ponavljaj = 0;
       break;
       
       case NAST_EDIT:
@@ -291,34 +356,285 @@ void loop() {
       case NAST_MOTOR3:
       case NAST_SENZORJI:
       case NAST_PROG1:
+      case NAST_PROG2:
+      case NAST_PROG3:
         drawScreenNast();
+        sPrint("drawScreenNast ", state);
+      break;
+      
+      case PROGRAM_1:
+        programFSM1();
       break;
       
       case PROGRAM_2:
+        programFSM2();
+      break;
+      
+      case PROGRAM_3:
+        programFSM3();
+      break;
+      
+      case ODSTEVAJ:
+        odstevaj();
+      break;
+      
+      default:
+      //ce ne dobi nc pametnga se vrne na prvotno stanje
+      Serial.println("def");
+      state = prevState;
       break;
    }
   
+  
+  prevState = state;
   while(!preveriTipke() && !ponavljaj);
-  ponavljaj = 0;
    
         
 }
-               
+void confOdstevalnik(){
+    //skonfigurira odstevalnik
+    odstevalnik.state = 1;
+    odstevalnik.stOdstevanj = 5;
+    odstevalnik.mills = 0;
+    odstevalnik.returnState  = state;
+    // nastavi vrednost tipke da ko uporabnik pritisne GOR bo su nazanj na meni
+    ((s_ekranOdstevaj*)vsiEkrani[ODSTEVAJ])->tipke[btnUP] = ((s_ekranProgram*)vsiEkrani[state])->tipke[btnUP];
+    state = ODSTEVAJ;
+    ponavljaj = 1;
+}
+
+
+int trajanje;
+long zacetniCas;
+void programFSM1(){
+   char  izpisTocke[16];
+  char  tockeSkupajArr[3];
+  
+  switch (programState) {
+      case -1:
+        //skonfigurira odstevalnik
+        confOdstevalnik();
+        programState = 0;
+        tarcaSkrij(0);
+        tarcaSkrij(1);
+        tarcaSkrij(2);
+        //odstevalnik premakne programState naprej na 1
+        break;
+  
+      case 1:
+        programState = 2;
+        
+        //nikol se ne ugasne
+        tarcaPokazi(0,-1);
+        tarcaPokazi(1,-1);
+        tarcaPokazi(2,-1);
+        
+        ponavljaj = 1;
+        trajanje = spomin[MEM_PROG1_CAS]*10;// tuki se mer v dekasekundah
+        
+        lcd.clear();
+        lcd.printIn("Preostali cas:",-1);
+        lcd.cursorTo(2, 0);
+        lcd.printIn("         s      ",16);
+        zacetniCas = millis();
+        
+      case 2:
+         if(trajanje < (millis()-zacetniCas)/100){
+           programState = 3;
+           break;
+         }
+           
+         //izpisi cas
+         lcd.cursorTo(2, 4);
+         intToArr(&casAray[0],trajanje - (millis()-zacetniCas)/100,1,5,' ');
+         lcd.printIn(casAray, -1);
+        
+     break;
+  
+      case 3:
+         tarcaSkrij(0);
+         tarcaSkrij(1);
+         tarcaSkrij(2);
+         piskacOn(3,ZVOK_LOW);
+         //state = KONCI_ZASLON;
+         state = MENI_PROG1;
+      break;
+  }
+
+}
+
+int interval;
+int izbrana;
+void programFSM2(){
+   char  izpisTocke[16];
+  char  tockeSkupajArr[3];
+  
+  switch (programState) {
+      case -1:
+        //skonfigurira odstevalnik
+        confOdstevalnik();
+        programState = 0;
+        tarcaSkrij(0);
+        tarcaSkrij(1);
+        tarcaSkrij(2);
+        //odstevalnik premakne programState naprej na 1
+        break;
+  
+      case 1:
+        programState = 2;
+        interval = spomin[MEM_PROG2_INTERVAL]*10;
+        
+        izbrana = random(3);
+        tarcaPokazi(izbrana, interval);
+        
+        ponavljaj = 1;
+        trajanje = spomin[MEM_PROG2_CAS]*10;//mer v dekasekundah
+        
+        lcd.clear();
+        lcd.printIn("Preostali cas:",-1);
+        lcd.cursorTo(2, 0);
+        lcd.printIn("         s      ",16);
+        zacetniCas = millis();
+        
+      case 2:
+         if(trajanje < (millis()-zacetniCas)/100){
+           programState = 3;
+           break;
+         }
+         //ce je izbrana tarca ze ugasnena izbere novo :)
+         if(tarca[izbrana].stanje == OFF){
+            izbrana = random(3);
+            tarcaPokazi(izbrana, interval);
+         }
+           
+         //izpisi cas
+         lcd.cursorTo(2, 4);
+         intToArr(&casAray[0],trajanje - (millis()-zacetniCas)/100,1,5,' ');
+         lcd.printIn(casAray, -1);
+        
+     break;
+  
+      case 3:
+         tarcaSkrij(0);
+         tarcaSkrij(1);
+         tarcaSkrij(2);
+         piskacOn(3,ZVOK_LOW);
+         //state = KONCI_ZASLON;
+         state = MENI_PROG2;
+      break;
+  }
+
+}
+
+void programFSM3(){
+   char  izpisTocke[16];
+  char  tockeSkupajArr[3];
+  
+  switch (programState) {
+      case -1:
+        //skonfigurira odstevalnik
+        confOdstevalnik();
+        programState = 0;
+        tarcaSkrij(0);
+        tarcaSkrij(1);
+        tarcaSkrij(2);
+        //odstevalnik premakne programState naprej na 1
+        break;
+  
+      case 1:
+        programState = 2;
+        interval = spomin[MEM_PROG3_INTERVAL]*10;
+        
+        izbrana = 0;
+        tarcaPokazi(izbrana, interval);
+        
+        ponavljaj = 1;
+        trajanje = spomin[MEM_PROG3_CAS]*10;//mer v dekasekundah
+        
+        lcd.clear();
+        lcd.printIn("Preostali cas:",-1);
+        lcd.cursorTo(2, 0);
+        lcd.printIn("         s      ",16);
+        zacetniCas = millis();
+        
+      case 2:
+         if(trajanje < (millis()-zacetniCas)/100){
+           programState = 3;
+           break;
+         }
+         //ce je izbrana tarca ze ugasnena izbere novo :)
+         if(tarca[izbrana].stanje == OFF){
+            izbrana ++;
+            izbrana = izbrana % 3;
+            tarcaPokazi(izbrana, interval);
+         }
+           
+         //izpisi cas
+         lcd.cursorTo(2, 4);
+         intToArr(&casAray[0],trajanje - (millis()-zacetniCas)/100,1,5,' ');
+         lcd.printIn(casAray, -1);
+        
+     break;
+  
+      case 3:
+         tarcaSkrij(0);
+         tarcaSkrij(1);
+         tarcaSkrij(2);
+         piskacOn(3,ZVOK_LOW);
+         //state = KONCI_ZASLON;
+         state = MENI_PROG3;
+      break;
+  }
+
+}
+
 
 void getSpomin() {
  
   //deklaracija parametrov	opis,	        min,	max,	def,	korak
-  parametri[MEM_MOTOR_1_MIN]=	{"zaprt:",	10,	180,	40,	5	};
-  parametri[MEM_MOTOR_1_MAX]=   {"odprt:",	10,	180,	80,	5	};
+  parametri[MEM_MOTOR_1_MIN]=	{"zaprt:",	10,	180,	110,	5	};
+  parametri[MEM_MOTOR_1_MAX]=   {"odprt:",	10,	180,	35,	5	};
   
-  parametri[MEM_MOTOR_2_MIN]=	{"zaprt:",	10,	180,	40,	5	};
-  parametri[MEM_MOTOR_2_MAX]=	{"odprt:",	10,	180,	80,	5	};
+  parametri[MEM_MOTOR_2_MIN]=	{"zaprt:",	10,	180,	110,	5	};
+  parametri[MEM_MOTOR_2_MAX]=	{"odprt:",	10,	180,	35,	5	};
   
-  parametri[MEM_MOTOR_3_MIN]=	{"zaprt:",	10,	180,	40,	5	};
-  parametri[MEM_MOTOR_3_MAX]=	{"odprt:",	10,	180,	80,	5	};
+  parametri[MEM_MOTOR_3_MIN]=	{"zaprt:",	10,	180,	110,	5	};
+  parametri[MEM_MOTOR_3_MAX]=	{"odprt:",	10,	180,	35,	5	};
   
   parametri[MEM_SENSOR]=	{"obcut.:",	1,	5,	3,	1	};
-
+  
+  parametri[MEM_PROG1_CAS]=	{"cas:",	10,	300,	30,	10	};
+  
+  parametri[MEM_PROG2_INTERVAL]={"interval:",	1,	30,	5,	1	};
+  parametri[MEM_PROG2_CAS]=	{"cas:",	10,	300,	30,	10	};
+  
+  parametri[MEM_PROG3_INTERVAL]={"interval:",	1,	30,	5,	1	};
+  parametri[MEM_PROG3_CAS]=	{"cas:",	10,	300,	30,	10	};
+      
+      
+  int vrednost = EEPROM.read(MEM_PRVIC);
+  Serial.println(vrednost);
+  //pogleda ali je arduino ze biu prizgan
+  if(vrednost != VARNOSTNA_ST){
+    Serial.println("Prvic prizgan, pisem def vrednosti");
+    EEPROM.write(MEM_PRVIC,212);
+    //nafila ceu spomin iz EEPROM-a
+    for (i = 0; i < ST_SPOMINA; i++) {
+      Serial.print(i);
+      Serial.print(": ");
+      spomin[i] = parametri[i].vrednost;
+      EEPROM.write(i, parametri[i].vrednost / parametri[i].korak);
+      Serial.print("  ");
+      Serial.print("nova:");
+      spomin[i];
+      Serial.println(spomin[i]);
+    }
+    
+    return;
+  }
+  sPrint("vrednosti so ze shranjene "VARNOSTNA_ST_STR" == ", vrednost);
+  //vrednost = EEPROM.read(MEM_PRVIC);
+  //Serial.println(vrednost);
   
   //nafila ceu spomin iz EEPROM-a
   for (i = 0; i < ST_SPOMINA; i++) {
@@ -334,7 +650,7 @@ void getSpomin() {
       
       //na zacetku ko se ni nc spremenjen je v .vrednosti notr osnovna def vrednost
       spomin[i] = parametri[i].vrednost;
-      
+      EEPROM.write(i, parametri[i].vrednost / parametri[i].korak);
       Serial.print("  ");
       Serial.print("nova:");
     }
@@ -350,17 +666,32 @@ void getSpomin() {
                
                
                
-void tarcaPokazi(uint8_t stTarce, uint8_t cas){
-  tarca[stTarce].stanje = ON;
+void tarcaPokazi(uint8_t stTarce, int16_t cas){
+  if(cas == -1){
+    tarca[stTarce].stanje = VEDNO_ON;
+  }else{
+    tarca[stTarce].stanje = ON;
+  }
   tarca[stTarce].cnt = cas; // cas je v dekasekundah
-  tarca[stTarce].motor.writeMicroseconds(2000);
+  //tarca[stTarce].motor.writeMicroseconds(2000);
+  switch(stTarce){
+    case 0:tarca[stTarce].motor.write(spomin[MEM_MOTOR_1_MAX]);break;
+    case 1:tarca[stTarce].motor.write(spomin[MEM_MOTOR_2_MAX]);break;
+    case 2:tarca[stTarce].motor.write(spomin[MEM_MOTOR_3_MAX]);break;
+  }
   //tarca[stTarce].tocke = 1;
   digitalWrite(3,HIGH);
+  sPrint("aktivnaTarca: ", stTarce);
 }
 
 void tarcaSkrij(uint8_t stTarce){
   tarca[stTarce].stanje = OFF;
-  tarca[stTarce].motor.writeMicroseconds(1000);
+  //tarca[stTarce].motor.writeMicroseconds(1000);
+  switch(stTarce){
+    case 0:tarca[stTarce].motor.write(spomin[MEM_MOTOR_1_MIN]);break;
+    case 1:tarca[stTarce].motor.write(spomin[MEM_MOTOR_2_MIN]);break;
+    case 2:tarca[stTarce].motor.write(spomin[MEM_MOTOR_3_MIN]);break;
+  }
   //tarca[stTarce].tocke = 0;
   //tarca[stTarce].cnt = 0;
   digitalWrite(3,LOW);
@@ -376,11 +707,11 @@ void premakniMotor(uint8_t stMotorja, uint16_t mesto){
 
 uint8_t preveriTipke(){
   if(get_LCD_button(btnUP)){
-    //Serial.println(((s_ekran*)vsiEkrani[state])->tipke[btnUP]); 
+    //Serial.println("UP"); 
     return izvediUkaz(((s_ekran*)vsiEkrani[state])->tipke[btnUP]);
   }
   else if(get_LCD_button(btnDOWN)){
-    //Serial.println(((s_ekran*)vsiEkrani[state])->tipke[btnDOWN]); 
+    //Serial.println("DOWN"); 
     return izvediUkaz(((s_ekran*)vsiEkrani[state])->tipke[btnDOWN]);
   }
   else if(get_LCD_button(btnRIGHT)){
@@ -395,9 +726,12 @@ uint8_t preveriTipke(){
   return 0;
 }
 
+uint32_t zadnjiPritisk;
+uint8_t stPritiskov = 0;
 uint8_t izvediUkaz(uint8_t ukaz){
+  //sPrint("ukaz: ", ukaz);
   if(ukaz == 0)return 0;
-  if(ukaz < 15){
+  if(ukaz < MAX_EKRANOV && ukaz != NAST_EDIT){
     state = ukaz;
     return 1;
   }
@@ -441,7 +775,8 @@ uint8_t izvediUkaz(uint8_t ukaz){
     
     //vstop v okno
     case NAST_EDIT:
-      
+      Serial.println("NAST_EDIT");
+      sPrint("State je ",state);
       // zapovne si state da ve kere podatke ureja
       //to more nardit preden klice d_parameter saj v njem uporablja d_retState
       d_retState = state;
@@ -480,6 +815,17 @@ uint8_t izvediUkaz(uint8_t ukaz){
       
     return 1;
     
+    case STEJ_PRITISKE:
+      if(millis() - zadnjiPritisk < 500){
+        stPritiskov ++;
+        if(stPritiskov > 10){
+          state = MENI_MADE_BY;
+        }
+      }else{
+        stPritiskov = 1;
+      }
+      zadnjiPritisk = millis();
+    return 1;
     
   }
 
@@ -543,41 +889,44 @@ void koncniRezultati(int program){
   
 }
 
-long mills = 0;
-void odstevaj(){
-  switch(odstevajState){
+
+void odstevaj() {
+  //sPrint("ost State:", odstevalnik.state);
+  switch (odstevalnik.state) {
     case 1:
       char outStr[16];
       lcd.cursorTo(1,0);
-      lcd.printIn("Igra se zacne v",-1);
+      lcd.printIn(((s_ekranOdstevaj*)vsiEkrani[ODSTEVAJ])->naslov,-1); //"Igra se zacne v"
       char cifra[2];
-      piskac = OFF;
-      odstevajState = 2;
-      mills = millis()-960;
-    
+      odstevalnik.state = 2;
+      odstevalnik.mills = 0;
+      ponavljaj = 1;
+
     case 2:
-    if(millis() - mills > 960){
-      mills = millis();
-      if(stOdstevanj-- == 0){
-        odstevajState = 3;
-        break;
+      //sPrint("cas: ",odstevalnik.mills );
+      if (millis() - odstevalnik.mills > 960) {
+        odstevalnik.mills = millis();
+        if (odstevalnik.stOdstevanj-- == 0) {
+          odstevalnik.state = 3;
+          break;
+        }
+        lcd.cursorTo(2,0);
+        itoa(odstevalnik.stOdstevanj + 1, cifra, 10);
+        lcd.printIn(pretvoriBesedilo(outStr,cifra,NASLOV),16);
+        piskacOn(3,ZVOK_LOW);
       }
-      lcd.cursorTo(2,0);
-      itoa(stOdstevanj+1,cifra,10);
-      lcd.printIn(pretvoriBesedilo(outStr,cifra,NASLOV),16);
-      piskacOn(3,ZVOK_LOW);
-      tarcaPokazi(0,10);
-     }
-     break; 
-     
-     case 3:
-      lcd.cursorTo(2,0);
-      lcd.printIn(pretvoriBesedilo(outStr,"! GO !",NASLOV),16);
+      break;
+
+    case 3:
+      //lcd.setCursor(0, 1);
+      //lcd.print(pretvoriBesedilo(outStr, "! GO !", NASLOV));
       piskacOn(10,ZVOK_MAX);
-      if(millis() - mills > 1500){
+      if (millis() - odstevalnik.mills > 100) {
+        state = odstevalnik.returnState;
+        sPrint("ret State:", state);
         programState = 1;
       }
-     break;
+      break;
   }
 }
 
@@ -589,9 +938,13 @@ void drawScreen(){
   lcd.cursorTo(1,0); // postav ga na sredino //TODO: IZRUSI SAMO TAKRAT KO GA se spremeni !!
   lcd.printIn(pretvoriBesedilo(&outStr[0],((s_ekran*)vsiEkrani[state])->naslov, NASLOV),16); 
   
+  //ne izrse puscic ce je samo 1 izbor
+  int tipIzrisa = BESEDILO;
+  if(((s_ekran*)vsiEkrani[state])->st_elementov < 2)tipIzrisa = NASLOV;
+  
   //izpiše spodnje besedilo
   lcd.cursorTo(2,0); 
-  lcd.printIn(pretvoriBesedilo(&outStr[0],((s_ekran*)vsiEkrani[state])->elementi[((s_ekran*)vsiEkrani[state])->trenutnoIzbran].besedilo, BESEDILO),16); 
+  lcd.printIn(pretvoriBesedilo(&outStr[0],((s_ekran*)vsiEkrani[state])->elementi[((s_ekran*)vsiEkrani[state])->trenutnoIzbran].besedilo, tipIzrisa),16); 
   programState = -1; //TODO premakn to na bolsi mest
 }
 
@@ -614,9 +967,14 @@ void drawScreenNast(){
     
     int b=0; //<-- stevec ki se premika po poljih
     
-    //postavi puscice
-    outStr[b++] = ZNAK_LEVO;
-    outStr[15] = ZNAK_DESNO; 
+    //postavi puscice ce je elementov vec kot 2
+    if(((s_ekranNastavitve*)vsiEkrani[state])->stParametrov > 1){
+      outStr[b++] = ZNAK_LEVO;
+      outStr[15] = ZNAK_DESNO;
+    }else{
+      outStr[b++] = ' ';
+      outStr[15] = ' '; 
+    }
     uint8_t dolzina = (getDecLength(vrednost)+getLngth(opis)+1);
     while(b < 8 - (dolzina - dolzina/2)){
       outStr[b++] = ' ';
@@ -902,11 +1260,14 @@ void tarcaCount(){
   for(k=0;k<3;k++){
     if(tarca[k].stanje == ON){
       //toggleLed();
-      if(tarca[k].cnt == 0){
-          tarcaSkrij(k);
-      }else tarca[k].cnt --; 
+      //Serial.print("1");
+      //if(k == 0)sPrint("t0 ", tarca[k].cnt);
+      if(tarca[k].cnt == 0)tarcaSkrij(k);
+      else tarca[k].cnt --; 
     }
+    //Serial.print("0");
   }
+  //Serial.println();
 }
 
 unsigned long tipkeDelay = 0;
@@ -936,7 +1297,10 @@ void set_LCD_buttons()
 }
 int get_LCD_button(int btn)
 {
+
   if(gumbi[btn]){
+    //sPrint("gumb ", btn);
+    //sPrint("vrednost ", gumbi[btn]);
     gumbi[btn] = 0;
     return 1;
   }
