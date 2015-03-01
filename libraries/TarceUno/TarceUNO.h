@@ -1,4 +1,4 @@
-//v 1.07 A.B.
+//v 1.08 A.B.
 
 #ifndef tarceUNO_h
 #define tarceUNO_h
@@ -20,9 +20,12 @@
 #define btnRIGHT  3
 #define btnSELECT 4
 
-
+//serijska more bit sklopljena ce hocemo da dela zvok 
 #define PISKAC_PIN_JAKOST1  1
 #define PISKAC_PIN_JAKOST2  2
+//vezava pinov za zvok:
+//pin1 je prek 200 Ohm vezan na piskacev plus
+//pin2 je prek 500 Ohm vezan na piskacev plus
 #define GUMBI_PIN    A0
 #define SENZOR1_PIN  A1
 #define SENZOR2_PIN  A2
@@ -74,6 +77,9 @@
 #define NAST_EDIT_INC     33
 #define NAST_EDIT_FINISH  34 
 #define STEJ_PRITISKE     35 
+#define PROG1_KONEC		  36
+#define PROG2_KONEC		  37
+#define PROG3_KONEC		  38
 
 
 //spomin
@@ -98,9 +104,22 @@
 #define MEM_PROG3_INTERVAL	   10
 #define MEM_PROG3_CAS  	   	   11
 
+//dejanski indexi shranjenih parametrov
+#define INDEX_MOTOR_1_MIN        0
+#define INDEX_MOTOR_1_MAX        1
+#define INDEX_MOTOR_2_MIN        2
+#define INDEX_MOTOR_2_MAX        3
+#define INDEX_MOTOR_3_MIN        4
+#define INDEX_MOTOR_3_MAX        5
+#define INDEX_SENSOR    	   	   6
+#define INDEX_PROG1_CAS  	   	   7
+#define INDEX_PROG2_INTERVAL 	   8
+#define INDEX_PROG2_CAS  	   	   9
+#define INDEX_PROG3_INTERVAL	   10
+#define INDEX_PROG3_CAS  	   	   11
+	
 
-
-
+	
 #define FUN_TIPKE 200
 
 #define MAX_PARAMETROV 2 // kolk parametrov je lahko v posameznem oknu ekranNastavitve

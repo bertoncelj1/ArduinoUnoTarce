@@ -1,7 +1,6 @@
-//v 1.07 A.B.
+//v 1.08 A.B.
 
 
-#include <Timer.h>
 #include <Servo.h> 
 #include <LCD4Bit_mod.h> 
 #include <TarceUNO.h>
@@ -10,40 +9,25 @@
 
 
 
-//parametri v spominu, 
-s_parameter parametri[MAX_SPOMIN];
 
-
-//Timer Timer1;
 
 LCD4Bit_mod lcd = LCD4Bit_mod(2);
-volatile uint8_t tot_overflow;
-uint8_t toggle = 0;
-int piskac = OFF;
+
+int gumbi[5];
 int stoparica = OFF;
-int stevec = 0;
+
 int piskacCnt = 0;
-int gumbi[5] = {0,0,0,0,0};
-int adc_key_in;
-int funInt = 1;
+int piskac = OFF;
+
 uint8_t state;
-uint8_t puscice = 0; // ali so narisane puščice ? 
 uint16_t vsiEkrani[MAX_EKRANOV];
 uint16_t spomin[MAX_SPOMIN];
+s_tarca tarca[3];
+s_parameter parametri[MAX_SPOMIN];//opis vsake spremenljivke ki je v spominu. Nafila se v funkciji getSpomin()
 
-long zacetniCas2 = 0;
-char *(besedila)[3] = {
-  "Igra","Start ","Info"};
-char izpis[16] = {
-  ZNAK_LEVO,' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',ZNAK_DESNO};
-//int tocke[3];
-
-
-void piskacOn(int cas,int zvok);
-void piskacOff();
-int get_LCD_button();
-
-
+//dejanske vrednosti indeksov v spominu
+int vSpominu[ST_SPOMINA];
+char izpis[16] = {ZNAK_LEVO,' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',ZNAK_DESNO};
 
 
 
@@ -61,7 +45,7 @@ s_ekran mainMenu = //MENI_GLAVNI
 
 s_ekran infoMenu = //MENI_INFO
 {
-  "Verzija 1.07",
+  "Verzija 1.08",
   //gor dol levo, desno, select
   MENI_GLAVNI, STEJ_PRITISKE, STEJ_PRITISKE, STEJ_PRITISKE, 0,
   1, 0,
@@ -242,42 +226,40 @@ s_ekranProgram program1 =
 {
   0,
   //gor dol levo, desno, select
-  MENI_PROG1,0,0,0,0,
+  PROG1_KONEC,0,0,0,0,
 };
 
 s_ekranProgram program2 =
 {
   0,
   //gor dol levo, desno, select
-  MENI_PROG2,0,0,0,0,
+  PROG2_KONEC,0,0,0,0,
 };
 
 s_ekranProgram program3 =
 {
   0,
   //gor dol levo, desno, select
-  MENI_PROG3,0,0,0,0,
+  PROG3_KONEC,0,0,0,0,
 };
 
-s_tarca tarca[3];
+
 
 
 void setup() 
 { 
-    Serial.begin(9600); 
+  Serial.begin(9600); //serijska more bit sklopljena ce hocemo da dela zvok 
   Serial.println("Connection OK !");
   InitialiseIO();        // inicalizacija portov input/output
   InitialiseInterrupt(); // interupt za gumbe
   timer2Init();          // inicalizacije timerja (za piskace in stevec ...)
   lcdInit();             // lcd init
-  getSpomin();           //inicializira spomin in shranjene prebere vrednosti
+  getSpomin();           // inicializira spomin in shranjene prebere vrednosti
   state = MENI_GLAVNI;
- 
   
   initEkrani();
-  
-
 } 
+
 void initEkrani(){
   vsiEkrani[MENI_GLAVNI] =       (uint16_t)(&mainMenu);
   vsiEkrani[MENI_IGRAJ] =        (uint16_t)(&igrajMenu);
@@ -304,30 +286,19 @@ void initEkrani(){
   vsiEkrani[NAST_PROG1] =   	 (uint16_t)(&prog1Nast);
   vsiEkrani[NAST_PROG2] =   	 (uint16_t)(&prog2Nast);
   vsiEkrani[NAST_PROG3] =   	 (uint16_t)(&prog3Nast);
-  
-  
 }
 
-//int odstevajState = 0;
-//uint8_t stOdstevanj = 0;
 int8_t programState = -1;
 uint8_t stateReturn = 0;
 uint8_t ponavljaj = 0;
-void (*initProgram)();
+
 char scoreCel[17] = "  1:0     2:0   ";
 int i;
 int j;
-int cas = 10;
-char score[3];
+//char score[3];
 char casAray[10];
-uint8_t pozicijaKoncniIzpis = 0;
-uint8_t nastEditReturn;
-int tipPrograma = -1;
 
-koncniNapisi napisi2[] = {
-  "   Skupaj:      ",5000,
-  "                ",3000,
-};
+
 //zato da se zna vrniti nazaj na prejsni state v primeru da trenutni ne obstaja
 int prevState;
 void loop() {
@@ -391,14 +362,15 @@ void loop() {
    
         
 }
-void confOdstevalnik(){
+
+void confOdstevalnik(int retState){
     //skonfigurira odstevalnik
     odstevalnik.state = 1;
     odstevalnik.stOdstevanj = 5;
     odstevalnik.mills = 0;
     odstevalnik.returnState  = state;
     // nastavi vrednost tipke da ko uporabnik pritisne GOR bo su nazanj na meni
-    ((s_ekranOdstevaj*)vsiEkrani[ODSTEVAJ])->tipke[btnUP] = ((s_ekranProgram*)vsiEkrani[state])->tipke[btnUP];
+    ((s_ekranOdstevaj*)vsiEkrani[ODSTEVAJ])->tipke[btnUP] = retState; //((s_ekranProgram*)vsiEkrani[state])->tipke[btnUP];
     state = ODSTEVAJ;
     ponavljaj = 1;
 }
@@ -413,12 +385,13 @@ void programFSM1(){
   switch (programState) {
       case -1:
         //skonfigurira odstevalnik
-        confOdstevalnik();
+        confOdstevalnik(MENI_PROG1);
         programState = 0;
+        //odstevalnik premakne programState naprej na 1
+        
         tarcaSkrij(0);
         tarcaSkrij(1);
         tarcaSkrij(2);
-        //odstevalnik premakne programState naprej na 1
         break;
   
       case 1:
@@ -455,7 +428,7 @@ void programFSM1(){
          tarcaSkrij(0);
          tarcaSkrij(1);
          tarcaSkrij(2);
-         piskacOn(3,ZVOK_LOW);
+         piskacOn(3,ZVOK_MED);
          //state = KONCI_ZASLON;
          state = MENI_PROG1;
       break;
@@ -472,7 +445,7 @@ void programFSM2(){
   switch (programState) {
       case -1:
         //skonfigurira odstevalnik
-        confOdstevalnik();
+        confOdstevalnik(MENI_PROG2);
         programState = 0;
         tarcaSkrij(0);
         tarcaSkrij(1);
@@ -518,7 +491,7 @@ void programFSM2(){
          tarcaSkrij(0);
          tarcaSkrij(1);
          tarcaSkrij(2);
-         piskacOn(3,ZVOK_LOW);
+         piskacOn(3,ZVOK_MED);
          //state = KONCI_ZASLON;
          state = MENI_PROG2;
       break;
@@ -533,7 +506,7 @@ void programFSM3(){
   switch (programState) {
       case -1:
         //skonfigurira odstevalnik
-        confOdstevalnik();
+        confOdstevalnik(MENI_PROG3);
         programState = 0;
         tarcaSkrij(0);
         tarcaSkrij(1);
@@ -580,7 +553,7 @@ void programFSM3(){
          tarcaSkrij(0);
          tarcaSkrij(1);
          tarcaSkrij(2);
-         piskacOn(3,ZVOK_LOW);
+         piskacOn(3,ZVOK_MED);
          //state = KONCI_ZASLON;
          state = MENI_PROG3;
       break;
@@ -590,7 +563,21 @@ void programFSM3(){
 
 
 void getSpomin() {
- 
+    
+  vSpominu[MEM_MOTOR_1_MIN] 	= INDEX_MOTOR_1_MIN;   
+  vSpominu[MEM_MOTOR_1_MAX] 	= INDEX_MOTOR_1_MAX; 
+  vSpominu[MEM_MOTOR_2_MIN]	= INDEX_MOTOR_2_MIN;  
+  vSpominu[MEM_MOTOR_2_MAX] 	= INDEX_MOTOR_2_MAX;   
+  vSpominu[MEM_MOTOR_3_MIN] 	= INDEX_MOTOR_3_MIN;   
+  vSpominu[MEM_MOTOR_3_MAX] 	= INDEX_MOTOR_3_MAX;   
+  vSpominu[MEM_SENSOR] 		= INDEX_SENSOR;    	
+  vSpominu[MEM_PROG1_CAS] 	= INDEX_PROG1_CAS;  	
+  vSpominu[MEM_PROG2_INTERVAL]  = INDEX_PROG2_INTERVAL;
+  vSpominu[MEM_PROG2_CAS] 	= INDEX_PROG2_CAS;  	
+  vSpominu[MEM_PROG3_INTERVAL]  = INDEX_PROG3_INTERVAL;
+  vSpominu[MEM_PROG3_CAS] 	= INDEX_PROG3_CAS;  
+  
+  
   //deklaracija parametrov	opis,	        min,	max,	def,	korak
   parametri[MEM_MOTOR_1_MIN]=	{"zaprt:",	10,	180,	110,	5	};
   parametri[MEM_MOTOR_1_MAX]=   {"odprt:",	10,	180,	35,	5	};
@@ -623,7 +610,7 @@ void getSpomin() {
       Serial.print(i);
       Serial.print(": ");
       spomin[i] = parametri[i].vrednost;
-      EEPROM.write(i, parametri[i].vrednost / parametri[i].korak);
+      EEPROM.write(vSpominu[i], parametri[i].vrednost / parametri[i].korak);
       Serial.print("  ");
       Serial.print("nova:");
       spomin[i];
@@ -638,7 +625,7 @@ void getSpomin() {
   
   //nafila ceu spomin iz EEPROM-a
   for (i = 0; i < ST_SPOMINA; i++) {
-    spomin[i] = EEPROM.read(i) * parametri[i].korak;
+    spomin[i] = EEPROM.read(vSpominu[i]) * parametri[i].korak;
     
      Serial.print(i);
      Serial.print(": ");
@@ -650,7 +637,7 @@ void getSpomin() {
       
       //na zacetku ko se ni nc spremenjen je v .vrednosti notr osnovna def vrednost
       spomin[i] = parametri[i].vrednost;
-      EEPROM.write(i, parametri[i].vrednost / parametri[i].korak);
+      EEPROM.write(vSpominu[i], parametri[i].vrednost / parametri[i].korak);
       Serial.print("  ");
       Serial.print("nova:");
     }
@@ -674,11 +661,18 @@ void tarcaPokazi(uint8_t stTarce, int16_t cas){
   }
   tarca[stTarce].cnt = cas; // cas je v dekasekundah
   //tarca[stTarce].motor.writeMicroseconds(2000);
-  switch(stTarce){
+ switch(stTarce){
     case 0:tarca[stTarce].motor.write(spomin[MEM_MOTOR_1_MAX]);break;
     case 1:tarca[stTarce].motor.write(spomin[MEM_MOTOR_2_MAX]);break;
     case 2:tarca[stTarce].motor.write(spomin[MEM_MOTOR_3_MAX]);break;
   }
+  /*switch(stTarce){
+    case 0:digitalWrite(MORTOR1_PIN, HIGH);break;
+    case 1:digitalWrite(MORTOR2_PIN, HIGH);break;
+    case 2:digitalWrite(MORTOR3_PIN, HIGH);break;
+    
+  }*/
+  
   //tarca[stTarce].tocke = 1;
   digitalWrite(3,HIGH);
   sPrint("aktivnaTarca: ", stTarce);
@@ -692,6 +686,15 @@ void tarcaSkrij(uint8_t stTarce){
     case 1:tarca[stTarce].motor.write(spomin[MEM_MOTOR_2_MIN]);break;
     case 2:tarca[stTarce].motor.write(spomin[MEM_MOTOR_3_MIN]);break;
   }
+  /*
+  switch(stTarce){
+    case 0:digitalWrite(MORTOR1_PIN, LOW);break;
+    case 1:digitalWrite(MORTOR2_PIN, LOW);break;
+    case 2:digitalWrite(MORTOR3_PIN, LOW);break;
+    
+  }
+  */
+  
   //tarca[stTarce].tocke = 0;
   //tarca[stTarce].cnt = 0;
   digitalWrite(3,LOW);
@@ -704,6 +707,7 @@ void premakniMotor(uint8_t stMotorja, uint16_t mesto){
   Serial.print(stMotorja);
   sPrint(": ", mesto);
 }
+
 
 uint8_t preveriTipke(){
   if(get_LCD_button(btnUP)){
@@ -773,6 +777,18 @@ uint8_t izvediUkaz(uint8_t ukaz){
       
     return 1;
     
+    case PROG1_KONEC:
+      programState = 3;
+    break;
+    
+    case PROG2_KONEC:
+      programState = 3;
+    break;
+    
+    case PROG3_KONEC:
+      programState = 3;
+    break;
+    
     //vstop v okno
     case NAST_EDIT:
       Serial.println("NAST_EDIT");
@@ -800,7 +816,7 @@ uint8_t izvediUkaz(uint8_t ukaz){
         //zapise vrednost nazaj v spomin
         spomin[d_indexParametra] = d_parameter.vrednost;
         
-        EEPROM.write(d_indexParametra, d_parameter.vrednost / d_parameter.korak);
+        EEPROM.write(vSpominu[d_indexParametra], d_parameter.vrednost / d_parameter.korak);
         sPrint("zapis v spomin:", d_parameter.vrednost / d_parameter.korak);
         
       }else{
@@ -856,10 +872,15 @@ koncniNapisi napisi1[] = {
   " nadaljevanje!  ",1000,
 };
 
-
+koncniNapisi napisi2[] = {
+  "   Skupaj:      ",5000,
+  "                ",3000,
+};
 
 uint8_t dolzina = 4;
 uint8_t stanje = 0;
+uint8_t pozicijaKoncniIzpis = 0;
+long zacetniCas2 = 0;
 
 void koncniRezultati(int program){
   //zapise zgornjo vrstico
@@ -1110,7 +1131,6 @@ void lcdInit(){
   lcd.clear();
   lcd.cursorTo(2, 0);
   lcd.printIn(izpis,16);
-  puscice = 1;
 }
 
 void InitialiseIO(){
@@ -1124,6 +1144,9 @@ void InitialiseIO(){
   digitalWrite(SENZOR3_PIN, HIGH);
   
   tarca[0].stanje = tarca[1].stanje = tarca[2].stanje = OFF;
+  //pinMode(MORTOR1_PIN, OUTPUT);
+  //pinMode(MORTOR2_PIN, OUTPUT);
+  //pinMode(MORTOR3_PIN, OUTPUT);
   tarca[0].motor.attach(MORTOR1_PIN);
   tarca[1].motor.attach(MORTOR2_PIN);
   tarca[2].motor.attach(MORTOR3_PIN);
@@ -1205,6 +1228,8 @@ void intToArr(char *c, long n, int stDecMest, int dolChara,char znak){
   }
 
 }
+
+uint8_t toggle = 0;
 void toggleLed(){
   if(toggle){
     digitalWrite(3,HIGH);
@@ -1214,8 +1239,10 @@ void toggleLed(){
   }
   toggle = !toggle;
 }
+
 void piskacOn(int cas,int zvok){
   if(piskac == OFF){
+    sPrint("piskac ON ", zvok);
     piskacCnt = cas;
     //Timer1.attachInterrupt(100, piskacOff);
     //Timer1.attachInterrupt(piskacOff); 
@@ -1245,7 +1272,9 @@ void piskacOn(int cas,int zvok){
 }
 
 void piskacCount(){
+
   if(piskac == ON){
+    sPrint("p ", piskacCnt);
     if(piskacCnt == 0){
       //Timer1.detachInterrupt();
         digitalWrite(PISKAC_PIN_JAKOST1, LOW);
@@ -1271,6 +1300,7 @@ void tarcaCount(){
 }
 
 unsigned long tipkeDelay = 0;
+int adc_key_in;
 uint8_t up = 0;
 void set_LCD_buttons()
 {
@@ -1331,7 +1361,7 @@ ISR(PCINT1_vect) {    // Interrupt service routine. Every single PCINT8..14 (=AD
   else if (digitalRead(A3)==0)  povecajTocke(2);
 }
 
-
+volatile uint8_t tot_overflow;
 ISR(TIMER2_OVF_vect)
 {
   // keep a track of number of overflows
@@ -1400,4 +1430,3 @@ int getDecLength(long n){
     }
   }
 }
-
