@@ -1,36 +1,21 @@
 //v 1.08 A.B.
-
-
 #include <Servo.h> 
 #include <LCD4Bit_mod.h> 
 #include <TarceUNO.h>
 #include <EEPROM.h>   //branje in pisanje v spomin
 
-
-
-
-
-
+//osnovne spremenljivke
 LCD4Bit_mod lcd = LCD4Bit_mod(2);
-
 int gumbi[5];
-int stoparica = OFF;
-
-int piskacCnt = 0;
-int piskac = OFF;
-
 uint8_t state;
 uint16_t vsiEkrani[MAX_EKRANOV];
 uint16_t spomin[MAX_SPOMIN];
 s_tarca tarca[3];
 s_parameter parametri[MAX_SPOMIN];//opis vsake spremenljivke ki je v spominu. Nafila se v funkciji getSpomin()
-
-//dejanske vrednosti indeksov v spominu
-int vSpominu[ST_SPOMINA];
+int vSpominu[ST_SPOMINA];//dejanske vrednosti indeksov v spominu
 char izpis[16] = {ZNAK_LEVO,' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',ZNAK_DESNO};
 
-
-
+//definicija vseh ekranov
 s_ekran mainMenu = //MENI_GLAVNI
 {
   "Glavni meni",
@@ -248,7 +233,7 @@ s_ekranProgram program3 =
 
 void setup() 
 { 
-  Serial.begin(9600); //serijska more bit sklopljena ce hocemo da dela zvok 
+  //Serial.begin(9600); //serijska more bit sklopljena ce hocemo da dela zvok 
   Serial.println("Connection OK !");
   InitialiseIO();        // inicalizacija portov input/output
   InitialiseInterrupt(); // interupt za gumbe
@@ -1240,6 +1225,8 @@ void toggleLed(){
   toggle = !toggle;
 }
 
+int piskacCnt = 0;
+int piskac = OFF;
 void piskacOn(int cas,int zvok){
   if(piskac == OFF){
     sPrint("piskac ON ", zvok);
