@@ -4,7 +4,7 @@
 #include <TarceUNO.h>
 #include <EEPROM.h>   //branje in pisanje v spomin
 
-#define OMOGOCI_SPOMIN 0
+#define OMOGOCI_SPOMIN 1
 
 //osnovne spremenljivke
 LCD4Bit_mod lcd = LCD4Bit_mod(2);
